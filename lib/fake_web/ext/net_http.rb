@@ -28,12 +28,16 @@ module Net  #:nodoc: all
     alias :original_net_http_request :request
     alias :original_net_http_connect :connect
 
-    def request(request, body = nil, &block)
+    def request(*args, &block)
+      
+      request = args[0]
+      body    = args[1]
       protocol = use_ssl? ? "https" : "http"
 
       path = request.path
       path = URI.parse(request.path).request_uri if request.path =~ /^http/
-
+      path = "#{path}#{body}" if body # push on the query params, feels hacky but works, must be a nicer way
+          
       if request['authorization'].nil?
         userinfo = ""
       else
@@ -48,7 +52,7 @@ module Net  #:nodoc: all
         FakeWeb.response_for(method, uri, &block)
       elsif FakeWeb.allow_net_connect?
         original_net_http_connect
-        original_net_http_request(request, body, &block)
+        original_net_http_request(*args, &block)
       else
         raise FakeWeb::NetConnectNotAllowedError,
               "Real HTTP connections are disabled. Unregistered request: #{request.method} #{uri}"
